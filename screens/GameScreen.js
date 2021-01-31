@@ -6,7 +6,7 @@ import {
   Alert,
   ScrollView,
   FlatList,
-  Dimensions
+  Dimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
@@ -34,9 +34,13 @@ const renderListItem = (listLength, itemData) => (
 );
 
 const GameScreen = (props) => {
+
+
   const initialGuess = generateRandomBetween(1, 100, props.userChoice);
   const [currentGuess, setCurrentGuess] = useState(initialGuess);
   const [pastGuesses, setPastGuesses] = useState([initialGuess.toString()]);
+  const [availableDeviceHeight, setAvailableDeviceHeight] = useState(Dimensions.get("window").height);
+  const [availableDeviceWidth, setAvailableDeviceWidth] = useState(Dimensions.get("window").width);
   const currentLow = useRef(1);
   const currentHigh = useRef(100);
 
@@ -47,6 +51,19 @@ const GameScreen = (props) => {
       props.onGameOver(pastGuesses.length);
     }
   }, [currentGuess, userChoice, onGameOver]);
+
+  useEffect(() => {
+    const updateLayout = () => {
+      setAvailableDeviceWidth(Dimensions.get('window').width);
+      setAvailableDeviceHeight(Dimensions.get('window').height);
+    };
+
+    Dimensions.addEventListener('change', updateLayout);
+
+    return () => {
+      Dimensions.removeEventListener('change', updateLayout);
+    };
+  })
 
   const nextGuessHandler = (direction) => {
     if (
@@ -79,8 +96,40 @@ const GameScreen = (props) => {
 
   // if checks to use variables to set styles for different size devices (nice and readable)
   let listContainerStyle = styles.listContainer;
-  if (Dimensions.get('window').width < 350) {
+  if (availableDeviceWidth < 350) {
     listContainerStyle = styles.listContainerBig;
+  }
+
+  if (availableDeviceHeight < 500) {
+    return (
+      <View style={styles.screen}>
+        <Text>Opponent's Guess</Text>
+        <View style={styles.controls}>
+          <MainButton onPress={nextGuessHandler.bind(this, "lower")}>
+            <Ionicons name="md-remove" size={24} color="white" />
+          </MainButton>
+          <NumberContainer>{currentGuess}</NumberContainer>
+          <MainButton onPress={nextGuessHandler.bind(this, "greater")}>
+            <Ionicons name="md-add" size={24} color="white" />
+          </MainButton>
+        </View>
+
+        <View style={listContainerStyle}>
+          {/* // ScrollView is worse for performance when the amount of variables are unknown, but for this game (<100) it's fine
+          <ScrollView contentContainerStyle={styles.list}>
+            {pastGuesses.map((guess, index) => (
+              renderListItem(guess, pastGuesses.length - index)
+            ))}
+          </ScrollView> */}
+          <FlatList
+            keyExtractor={(item) => item}
+            data={pastGuesses}
+            renderItem={renderListItem.bind(this, pastGuesses.length)}
+            contentContainerStyle={styles.list}
+          />
+        </View>
+      </View>
+    );
   }
 
   return (
@@ -122,7 +171,7 @@ const styles = StyleSheet.create({
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-around",
-    marginTop: Dimensions.get('window').height > 600 ? 20 : 5,
+    marginTop: Dimensions.get("window").height > 600 ? 20 : 5,
     width: 400,
     maxWidth: "90%",
   },
@@ -136,12 +185,18 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     width: "100%",
   },
+  controls: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    width: '80%',
+    alignItems: 'center'
+  },
   listContainer: {
-    width: '60%',
+    width: "60%",
     flex: 1, // has to be set in order to scroll on Android
   },
   listContainerBig: {
-    width: '80%',
+    width: "80%",
     flex: 1, // has to be set in order to scroll on Android
   },
   list: {
